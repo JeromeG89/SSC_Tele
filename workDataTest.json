@@ -1,0 +1,41 @@
+{
+  "users": [],
+  "workDates": {
+    "2025-06-20": {
+      "createdId": 2133049874,
+      "createdName": "jero_m",
+      "workSlots": {
+        "WorkSlot 1": {
+          "time": "5pm",
+          "duration": "2hrs",
+          "pay": "$24",
+          "assignedId": 2133049874,
+          "assignedName": "jero_m"
+        },
+        "WorkSlot 2": {
+          "time": "5pm",
+          "duration": "2hrs",
+          "pay": "$24",
+          "assignedId": 2133049874,
+          "assignedName": "jero_m"
+        }
+      }
+    },
+    "2025-10-20": {
+      "createdId": 2133049874,
+      "createdName": "jero_m",
+      "workSlots": {
+        "WorkSlot 1": {
+          "time": "5pm",
+          "duration": "2hrs",
+          "pay": "$24"
+        },
+        "WorkSlot 2": {
+          "time": "5pm",
+          "duration": "2hrs",
+          "pay": "$24"
+        }
+      }
+    }
+  }
+}
