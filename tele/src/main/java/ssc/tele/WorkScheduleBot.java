@@ -72,41 +72,72 @@ public class WorkScheduleBot extends TelegramLongPollingBot {
     }
 
     public void handleSetWork(Update update) {
-        Message message = update.getMessage();  // Get the message text
+        Message message = update.getMessage();
         String messageText = message.getText();
-        long chatId = update.getMessage().getChatId();  // Get the chat ID
+        long chatId = message.getChatId();
         Long userId = message.getFrom().getId();
         String username = message.getFrom().getUserName();
-
-        String[] parts = messageText.split(" ");
+    
+        // The format should be: /setworkdate <date> [(startHr, hours, numEmployee), (startHr, hours, numEmployee), ...]
+        String[] parts = messageText.split(" ", 3);
+        if (parts.length != 3) {
+            sendMessage(chatId, "Invalid format. Use: /setworkdate <yyyy-MM-dd> [(startHr, hours, numEmployees), ...]");
+            return;
+        }
+    
+        String dateString = parts[1];
+        Date date = parseDate(dateString);
+        if (date == null) {
+            sendMessage(chatId, "Invalid date format. Use: /setworkdate <yyyy-MM-dd> [(startHr, hours, numEmployees), ...]");
+            return;
+        }
+    
+        String slotsInput = parts[2].trim();
+        if (!slotsInput.startsWith("[") || !slotsInput.endsWith("]")) {
+            sendMessage(chatId, "Invalid format for work slots. Please provide the slots in the format [(startHr, hours, numEmployees), ...]");
+            return;
+        }
+    
+        // Remove the square brackets and extra spaces
+        slotsInput = slotsInput.substring(1, slotsInput.length() - 1).replaceAll("\\s+", "");  // Remove spaces
+        // Use regex to match and split each slot
+        String[] slotArray = slotsInput.split("\\),\\(");  // Split by each slot
+    
         JsonObject newWork = new JsonObject();
-        if (parts.length == 3) {
-            String dateString = parts[1];
-            Date date = parseDate(dateString);
-            if (date == null) {
-                sendMessage(chatId, "Invalid format. Use: /setworkdate <yyyy-mm-dd> <number_of_employees>");
+        newWork.addProperty("setterId", userId);
+        newWork.addProperty("setterName", username);
+        JsonObject workSlots = new JsonObject();
+    
+        for (int i = 0; i < slotArray.length; i++) {
+            // We now split the values by commas outside of parentheses.
+            String[] slotDetails = slotArray[i].split(",");  // Split by commas
+            if (slotDetails.length != 3) {
+                sendMessage(chatId, "Invalid slot format. Each slot should be in the format (startHr, hours, numEmployees).");
                 return;
             }
-            newWork.addProperty("createdId", userId);
-            newWork.addProperty("createdName", username);
-            int employeesCount = Integer.parseInt(parts[2]);  // Parse the number of employees
-            JsonObject workSlots = new JsonObject();
-            newWork.add("workSlots" ,workSlots);
-
-            for (int i = 1; i <= employeesCount; i++) { //TODO handle time, duration and pay
+    
+            try {
+                String startHr = slotDetails[0].trim().replace("(", "");
+                int hours = Integer.parseInt(slotDetails[1].trim());
+                int numEmployees = Integer.parseInt(slotDetails[2].trim().replace(")", ""));
+    
                 JsonObject slot = new JsonObject();
-                slot.addProperty("time", "5pm");
-                slot.addProperty("duration", "2hrs");
-                slot.addProperty("pay", "$24");
-                workSlots.add("WorkSlot " + String.valueOf(i), slot);
+                slot.addProperty("startHr", startHr);
+                slot.addProperty("duration", hours + "hrs");
+                slot.addProperty("numEmployees", numEmployees);
+                workSlots.add("WorkSlot " + (i + 1), slot);
+    
+            } catch (NumberFormatException e) {
+                sendMessage(chatId, "Invalid number format. Ensure hours and number of employees are integers.");
+                return;
             }
-            // Add or update the work date in the Json
-            this.workDates.add(dateString, newWork);
-            sendMessage(chatId, "Work date " + dateString + " has been set with " + employeesCount + " employees.");
-        } else {
-            sendMessage(chatId, "Invalid format. Use: /setworkdate <date> <number_of_employees>");
         }
+    
+        newWork.add("workSlots", workSlots);
+        this.workDates.add(dateString, newWork);
+        sendMessage(chatId, "Work date " + dateString + " has been set with " + slotArray.length + " time slots.");
     }
+    
     
     public void handleSignUp(Update update) {
         Message message = update.getMessage();  // Get the message text
@@ -183,7 +214,7 @@ public class WorkScheduleBot extends TelegramLongPollingBot {
         saveJsonData("workDataTest.json", workDataJson); 
     }
     private Date parseDate(String dateString) {
-        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-mm-dd");
+        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
         try {
             // Parse the string into a Date object
             Date date = dateFormat.parse(dateString);
